@@ -1,11 +1,12 @@
-import roboclaw
+#!/usr/bin/env python
+import roboclaw_driver.roboclaw_driver as roboclaw
 import rospy
 
 
 class Node:
     def __init__(self):
 
-        rospy.init_node('roboclaw_node_ros')
+        rospy.init_node('roboclaw_node')
 
         # Init roboclaw
         rospy.loginfo("Connecting to roboclaw")
