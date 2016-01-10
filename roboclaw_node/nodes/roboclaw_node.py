@@ -22,6 +22,7 @@ class EncoderOdom:
         self.last_enc_right = 0
         self.last_enc_time = rospy.Time.now()
 
+    @staticmethod
     def normalize_angle(angle):
         while angle > pi:
             angle -= 2.0 * pi
@@ -111,6 +112,7 @@ class EncoderOdom:
 
 class Node:
     def __init__(self):
+
         self.ERRORS = {0x0000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "Normal"),
                        0x0001: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 over current"),
                        0x0002: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 over current"),
@@ -129,47 +131,76 @@ class Node:
                        0x4000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M1 home"),
                        0x8000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M2 home")}
 
-        rospy.init_node('roboclaw_node')
-        rospy.loginfo("Connecting to roboclaw")
-        roboclaw.Open("/dev/ttyACM0", 115200)
+        rospy.init_node("roboclaw_node")
         rospy.on_shutdown(self.shutdown)
+        rospy.loginfo("Connecting to roboclaw")
+        dev_name = rospy.get_param("~dev", "/dev/ttyACM0")
+        baud_rate = int(rospy.get_param("~baud", "115200"))
+
+        self.address = int(rospy.get_param("~address", "128"))
+        if self.address > 0x87 or self.address < 0x80:
+            rospy.logfatal("Address out of range")
+            rospy.signal_shutdown("Address out of range")
+
+        # TODO need someway to check if address is correct
+        try:
+            roboclaw.Open(dev_name, baud_rate)
+        except Exception as e:
+            rospy.logfatal("Could not connect to Roboclaw")
+            rospy.logdebug(e)
+            rospy.signal_shutdown("Could not connect to Roboclaw")
 
         self.updater = diagnostic_updater.Updater()
         self.updater.setHardwareID("Roboclaw")
         self.updater.add(diagnostic_updater.
                          FunctionDiagnosticTask("Vitals", self.check_vitals))
 
-        self.address = 0x80
-        version = roboclaw.ReadVersion(self.address)
+        try:
+            version = roboclaw.ReadVersion(self.address)
+        except Exception as e:
+            rospy.logwarn("Problem getting roboclaw version")
+            rospy.logdebug(e)
+            pass
+
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
         else:
-            rospy.loginfo(repr(version[1]))
+            rospy.logdebug(repr(version[1]))
 
         roboclaw.SpeedM1M2(self.address, 0, 0)
         roboclaw.ResetEncoders(self.address)
 
-        self.MAX_SPEED = 5.0  # m/s
-        self.TICKS_PER_METER = 4342.2
-        self.BASE_WIDTH = 0.315  # m
+        self.MAX_SPEED = float(rospy.get_param("~max_speed", "2.0"))
+        self.TICKS_PER_METER = float(rospy.get_param("~tick_per_meter", "4342.2"))
+        self.BASE_WIDTH = float(rospy.get_param("~base_width", "0.315"))
 
         self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.last_set_speed_time = rospy.get_rostime()
-        rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
+        rospy.Subscriber("cmd_vel", Twist, self.cmd_vel_callback)
 
     def run(self):
         rospy.loginfo("Starting motor drive")
         r_time = rospy.Rate(10)
         while not rospy.is_shutdown():
+
+            # TODO need find solution to the OSError11 looks like sync problem with serial
             try:
                 enc1, status1, crc1 = roboclaw.ReadEncM1(self.address)
             except ValueError:
-                continue
+                pass
+            except OSError as e:
+                rospy.logwarn("ReadEncM1 OSError: %d", e.errno)
+                rospy.logdebug(e)
+
             try:
                 enc2, status2, crc2 = roboclaw.ReadEncM2(self.address)
             except ValueError:
-                continue
-            rospy.logdebug("Encoders %d %d" % (enc1, enc2))
+                pass
+            except OSError as e:
+                rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
+                rospy.logdebug(e)
+
+            rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
             self.encodm.update_publish(enc1, enc2)
 
             self.updater.update()
@@ -184,14 +215,19 @@ class Node:
         if linear_x < -self.MAX_SPEED:
             linear_x = -self.MAX_SPEED
 
-        Vr = linear_x + twist.angular.z * self.BASE_WIDTH / 2.0  # m/s
-        Vl = linear_x - twist.angular.z * self.BASE_WIDTH / 2.0
+        vr = linear_x + twist.angular.z * self.BASE_WIDTH / 2.0  # m/s
+        vl = linear_x - twist.angular.z * self.BASE_WIDTH / 2.0
 
-        Vr_ticks = int(Vr * self.TICKS_PER_METER)  # ticks/s
-        Vl_ticks = int(Vl * self.TICKS_PER_METER)
+        vr_ticks = int(vr * self.TICKS_PER_METER)  # ticks/s
+        vl_ticks = int(vl * self.TICKS_PER_METER)
 
-        roboclaw.SpeedM1M2(self.address, Vr_ticks, Vl_ticks)
+        try:
+            roboclaw.SpeedM1M2(self.address, vr_ticks, vl_ticks)
+        except OSError as e:
+            rospy.logwarn("SpeedM1M2 OSError: %d", e.errno)
+            rospy.logdebug(e)
 
+    # TODO: Need to make this work when more than one error is raised
     def check_vitals(self, stat):
         status = roboclaw.ReadError(self.address)[1]
         state, message = self.ERRORS[status]
@@ -202,6 +238,7 @@ class Node:
         stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
         return stat
 
+    # TODO: need clean shutdown so motors stop even if new msgs are ariving
     def shutdown(self):
         rospy.loginfo("Shutting down")
         roboclaw.ForwardM1(self.address, 0)
