@@ -138,8 +138,6 @@ class Node:
         self.updater.setHardwareID("Roboclaw")
         self.updater.add(diagnostic_updater.
                          FunctionDiagnosticTask("Vitals", self.check_vitals))
-        self.updater.add(diagnostic_updater.
-                         FunctionDiagnosticTask("Status", self.check_status))
 
         self.address = 0x80
         version = roboclaw.ReadVersion(self.address)
@@ -195,17 +193,13 @@ class Node:
         roboclaw.SpeedM1M2(self.address, Vr_ticks, Vl_ticks)
 
     def check_vitals(self, stat):
-        stat.summary(diagnostic_msgs.msg.DiagnosticStatus.OK, "")
+        status = roboclaw.ReadError(self.address)[1]
+        state, message = self.ERRORS[status]
+        stat.summary(state, message)
         stat.add("Main Batt V:", roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10)
         stat.add("Logic Batt V:", roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10)
         stat.add("Temp1 C:", roboclaw.ReadTemp(self.address)[1] / 10)
         stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
-        return stat
-
-    def check_status(self, stat):
-        status = roboclaw.ReadError(self.address)[1]
-        state, message = self.ERRORS[status]
-        stat.summary(state, message)
         return stat
 
     def shutdown(self):
