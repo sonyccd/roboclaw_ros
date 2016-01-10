@@ -1,0 +1,6 @@
+analyzers:
+  roboclaw:
+    type: GenericAnalyzer
+    path: Roboclaw
+    startswith: 'roboclaw_node'
+    num_items: 2

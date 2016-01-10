@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from math import pi, cos, sin
 
+import diagnostic_msgs
+import diagnostic_updater
 import roboclaw_driver.roboclaw_driver as roboclaw
 import rospy
 import tf
@@ -109,48 +111,102 @@ class EncoderOdom:
 
 class Node:
     def __init__(self):
+        self.ERRORS = {0x0000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "Normal"),
+                       0x0001: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 over current"),
+                       0x0002: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 over current"),
+                       0x0004: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Emergency Stop"),
+                       0x0008: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature1"),
+                       0x0010: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature2"),
+                       0x0020: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Main batt voltage high"),
+                       0x0040: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic batt voltage high"),
+                       0x0080: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic batt voltage low"),
+                       0x0100: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 driver fault"),
+                       0x0200: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 driver fault"),
+                       0x0400: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main batt voltage high"),
+                       0x0800: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main batt voltage low"),
+                       0x1000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature1"),
+                       0x2000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature2"),
+                       0x4000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M1 home"),
+                       0x8000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M2 home")}
+
         rospy.init_node('roboclaw_node')
         rospy.loginfo("Connecting to roboclaw")
         roboclaw.Open("/dev/ttyACM0", 115200)
         rospy.on_shutdown(self.shutdown)
+
+        self.updater = diagnostic_updater.Updater()
+        self.updater.setHardwareID("Roboclaw")
+        self.updater.add(diagnostic_updater.
+                         FunctionDiagnosticTask("Vitals", self.check_vitals))
+        self.updater.add(diagnostic_updater.
+                         FunctionDiagnosticTask("Status", self.check_status))
+
         self.address = 0x80
         version = roboclaw.ReadVersion(self.address)
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
         else:
             rospy.loginfo(repr(version[1]))
-        self.MAX_SPEED = 2.0
-        self.TICKS_PER_METER =
 
-        self.encodm = EncoderOdom(100, 100)
+        roboclaw.SpeedM1M2(self.address, 0, 0)
+        roboclaw.ResetEncoders(self.address)
+
+        self.MAX_SPEED = 5.0  # m/s
+        self.TICKS_PER_METER = 4342.2
+        self.BASE_WIDTH = 0.315  # m
+
+        self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.last_set_speed_time = rospy.get_rostime()
-        rospy.Subscriber('cmd_vel', Twist, self.cmd_vel_callback)
+        rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
 
     def run(self):
         rospy.loginfo("Starting motor drive")
         r_time = rospy.Rate(10)
         while not rospy.is_shutdown():
-            enc1, status1, crc1 = roboclaw.ReadEncM1(self.address)
-            enc2, status2, crc2 = roboclaw.ReadEncM2(self.address)
+            try:
+                enc1, status1, crc1 = roboclaw.ReadEncM1(self.address)
+            except ValueError:
+                continue
+            try:
+                enc2, status2, crc2 = roboclaw.ReadEncM2(self.address)
+            except ValueError:
+                continue
             rospy.logdebug("Encoders %d %d" % (enc1, enc2))
             self.encodm.update_publish(enc1, enc2)
+
+            self.updater.update()
             r_time.sleep()
 
     def cmd_vel_callback(self, twist):
-        if not self.paused:
-            self.last_set_speed_time = rospy.get_rostime()
+        self.last_set_speed_time = rospy.get_rostime()
 
-            linear_x = twist.linear.x
-            if linear_x > self.MAX_SPEED: linear_x = self.MAX_SPEED
-            if linear_x < -self.MAX_SPEED: linear_x = -self.MAX_SPEED
+        linear_x = twist.linear.x
+        if linear_x > self.MAX_SPEED:
+            linear_x = self.MAX_SPEED
+        if linear_x < -self.MAX_SPEED:
+            linear_x = -self.MAX_SPEED
 
-            Vr = linear_x + twist.angular.z * self.BASE_WIDTH / 2.0  # m/s
-            Vl = linear_x - twist.angular.z * self.BASE_WIDTH / 2.0
+        Vr = linear_x + twist.angular.z * self.BASE_WIDTH / 2.0  # m/s
+        Vl = linear_x - twist.angular.z * self.BASE_WIDTH / 2.0
 
-            Vr_ticks = int(Vr * self.TICKS_PER_METER)  # ticks/s
-            Vl_ticks = int(Vl * self.TICKS_PER_METER)
+        Vr_ticks = int(Vr * self.TICKS_PER_METER)  # ticks/s
+        Vl_ticks = int(Vl * self.TICKS_PER_METER)
 
-            roboclaw.SpeedM1M2(Vr_ticks, Vl_ticks)
+        roboclaw.SpeedM1M2(self.address, Vr_ticks, Vl_ticks)
+
+    def check_vitals(self, stat):
+        stat.summary(diagnostic_msgs.msg.DiagnosticStatus.OK, "")
+        stat.add("Main Batt V:", roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10)
+        stat.add("Logic Batt V:", roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10)
+        stat.add("Temp1 C:", roboclaw.ReadTemp(self.address)[1] / 10)
+        stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
+        return stat
+
+    def check_status(self, stat):
+        status = roboclaw.ReadError(self.address)[1]
+        state, message = self.ERRORS[status]
+        stat.summary(state, message)
+        return stat
 
     def shutdown(self):
         rospy.loginfo("Shutting down")

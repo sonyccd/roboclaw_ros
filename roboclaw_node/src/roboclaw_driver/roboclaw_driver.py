@@ -1,6 +1,7 @@
 import random
 import serial
 import time
+import threading
 
 _trystimeout = 3
 
