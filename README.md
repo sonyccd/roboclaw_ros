@@ -28,7 +28,7 @@ be manually set for the motor before starting. Autotune functions usually return
 values but in most cases you will still need to manually adjust them for optimum performance.
 
 ## Usage
-Just clone the repo into your catkin workspace.  It contains the ROS package and the motor controller driver.
+Just clone the repo into your catkin workspace. It contains the ROS package and the motor controller driver.
 ```bash
 cd <workspace>/src
 git clone https://github.com/sonyccd/roboclaw_ros.git
