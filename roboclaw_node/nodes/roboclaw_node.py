@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-
-__author__ = "bwbazemore@uga.edu (Brad Bazemore)"
-
 from math import pi, cos, sin
 
 import diagnostic_msgs
@@ -11,6 +8,8 @@ import rospy
 import tf
 from geometry_msgs.msg import Quaternion, Twist
 from nav_msgs.msg import Odometry
+
+__author__ = "bwbazemore@uga.edu (Brad Bazemore)"
 
 
 class EncoderOdom:
