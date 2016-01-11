@@ -1,5 +1,5 @@
 # roboclaw_ros
-This is the ROS driver for the Roboclaw motor controllers. http://www.ionmc.com/
+This is the ROS driver for the Roboclaw motor controllers made by [Ion Motor Control](http://www.ionmc.com/).
 
 ## Before you begin
 Before you get using this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
