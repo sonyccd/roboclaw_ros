@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+__author__ = "bwbazemore@uga.edu (Brad Bazemore)"
+
 from math import pi, cos, sin
 
 import diagnostic_msgs
