@@ -2,7 +2,7 @@
 This is the ROS driver for the Roboclaw motor controllers made by [Ion Motion Control](http://www.ionmc.com/).
 
 ## Before you begin
-Before you get using this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
+Before you use this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
 installation of the free software [IonMotion](http://downloads.ionmc.com/software/IonMotion/ionmotion.htm) (Windows only).
 You do not need to tune for position just velocity.
 
