@@ -26,8 +26,8 @@ The launch file can be configure at the command line with arguments, by changing
 
 ## Topics
 ###Subscribed
-/cmd_vel (http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html)  
-  Velocity commands for the mobile base.
+/cmd_vel [geometry_msgs/Twist](http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html)  
+Velocity commands for the mobile base.
 ###Published
-/odom (http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)  
-  Odometry output from the mobile base.
+/odom [nav_msgs/Odometry](http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)  
+Odometry output from the mobile base.
