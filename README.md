@@ -1,6 +1,32 @@
 # roboclaw_ros
 This is the ROS driver for the Roboclaw motor controllers. http://www.ionmc.com/
 
+## Before you begin
+Before you get using this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
+installation of the free software [IonMotion](http://downloads.ionmc.com/software/IonMotion/ionmotion.htm) (Windows only).
+You do not need to tune for position just velocity.
+
+From the user manual:
+>IonMotion includes the option to autotune velocity and or position values. To use these options
+you should first make sure your encoder and motor are running in the correct direction and that
+basic PWM control of the motor works as expected. To do this go to the PWM Settings screen in
+IonMotion. Slide the motor slider up to start moving the motor forward. Check the encoder is
+increasing in value. If it is not either reverse the motor wires or the encoder wires.  
+
+>If you are using autotune for Position control you must first set the motors QPPS value. Unlike
+Velocity autotune the QPPS value will not be automatically measured. This is because most
+position control systems have a limited range of movement. Once you have manually set the
+motors QPPS value(eg the maximum speed the motor can run at) you can continue with Position
+autotuning.  
+
+>Then just click the autotune button for the motor you want to tune. The autotune function will
+try to determine the best settings for the motor. In the Velocity settings window it will autotune
+for velocity. In the Position Settings window you have the option to tune a simple PD position
+controller, a PID position controller or a cascaded Position/Velocity controller(PIV). The cascaded
+tune will determine both the velocity and position values for the motor but still requires the QPPS
+be manually set for the motor before starting. Autotune functions usually return reasonable
+values but in most cases you will still need to manually adjust them for optimum performance.
+
 ## Usage
 This is just a folder that contains the driver. You can clone it into your catkin workspace.
 ```bash

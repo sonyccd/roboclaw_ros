@@ -14,7 +14,7 @@ class EncoderOdom:
     def __init__(self, ticks_per_meter, base_width):
         self.TICKS_PER_METER = ticks_per_meter
         self.BASE_WIDTH = base_width
-        self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=1)
+        self.odom_pub = rospy.Publisher('/odom', Odometry, queue_size=10)
         self.cur_x = 0
         self.cur_y = 0
         self.cur_theta = 0.0
@@ -44,15 +44,16 @@ class EncoderOdom:
         d_time = (current_time - self.last_enc_time).to_sec()
         self.last_enc_time = current_time
 
+        # TODO find better what to determine going straight, this means slight deviation is accounted
         if left_ticks == right_ticks:
             d_theta = 0.0
             self.cur_x += dist * cos(self.cur_theta)
             self.cur_y += dist * sin(self.cur_theta)
         else:
             d_theta = (dist_right - dist_left) / self.BASE_WIDTH
-            R = dist / d_theta
-            self.cur_x += R * (sin(d_theta + self.cur_theta) - sin(self.cur_theta))
-            self.cur_y -= R * (cos(d_theta + self.cur_theta) - cos(self.cur_theta))
+            r = dist / d_theta
+            self.cur_x += r * (sin(d_theta + self.cur_theta) - sin(self.cur_theta))
+            self.cur_y -= r * (cos(d_theta + self.cur_theta) - cos(self.cur_theta))
             self.cur_theta = self.normalize_angle(self.cur_theta + d_theta)
 
         if abs(d_time) < 0.000001:
@@ -66,6 +67,7 @@ class EncoderOdom:
 
     def update_publish(self, enc_left, enc_right):
         # 2106 per 0.1 seconds is max speed, error in the 16th bit is 32768
+        # TODO lets find a better way to deal with this error
         if abs(enc_left - self.last_enc_left) > 20000:
             rospy.logerr("Ignoring left encoder jump: cur %d, last %d" % (enc_left, self.last_enc_left))
         elif abs(enc_right - self.last_enc_right) > 20000:
@@ -82,7 +84,7 @@ class EncoderOdom:
         br.sendTransform((cur_x, cur_y, 0),
                          tf.transformations.quaternion_from_euler(0, 0, cur_theta),
                          current_time,
-                         "base_footprint",
+                         "base_link",
                          "odom")
 
         odom = Odometry()
