@@ -189,7 +189,7 @@ class Node:
 
             # TODO need find solution to the OSError11 looks like sync problem with serial
             try:
-                enc1, status1, crc1 = roboclaw.ReadEncM1(self.address)
+                status1, enc1, crc1 = roboclaw.ReadEncM1(self.address)
             except ValueError:
                 pass
             except OSError as e:
@@ -197,7 +197,7 @@ class Node:
                 rospy.logdebug(e)
 
             try:
-                enc2, status2, crc2 = roboclaw.ReadEncM2(self.address)
+                status2, enc2, crc2 = roboclaw.ReadEncM2(self.address)
             except ValueError:
                 pass
             except OSError as e:
@@ -225,8 +225,15 @@ class Node:
         vr_ticks = int(vr * self.TICKS_PER_METER)  # ticks/s
         vl_ticks = int(vl * self.TICKS_PER_METER)
 
+        rospy.logdebug("vr_ticks:%d vl_ticks: %d", vr_ticks, vl_ticks)
+
         try:
-            roboclaw.SpeedM1M2(self.address, vr_ticks, vl_ticks)
+            # This is a hack way to keep a poorly tuned PID from making noise at speed 0
+            if vr_ticks is 0 and vl_ticks is 0:
+                roboclaw.ForwardM1(self.address, 0)
+                roboclaw.ForwardM2(self.address, 0)
+            else:
+                roboclaw.SpeedM1M2(self.address, vr_ticks, vl_ticks)
         except OSError as e:
             rospy.logwarn("SpeedM1M2 OSError: %d", e.errno)
             rospy.logdebug(e)
@@ -236,10 +243,14 @@ class Node:
         status = roboclaw.ReadError(self.address)[1]
         state, message = self.ERRORS[status]
         stat.summary(state, message)
-        stat.add("Main Batt V:", roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10)
-        stat.add("Logic Batt V:", roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10)
-        stat.add("Temp1 C:", roboclaw.ReadTemp(self.address)[1] / 10)
-        stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
+        try:
+            stat.add("Main Batt V:", roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10)
+            stat.add("Logic Batt V:", roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10)
+            stat.add("Temp1 C:", roboclaw.ReadTemp(self.address)[1] / 10)
+            stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
+        except OSError as e:
+            rospy.logwarn("Diagnostics OSError: %d", e.errno)
+            rospy.logdebug(e)
         return stat
 
     # TODO: need clean shutdown so motors stop even if new msgs are ariving
