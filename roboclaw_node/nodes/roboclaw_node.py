@@ -250,7 +250,11 @@ class Node:
 
     # TODO: Need to make this work when more than one error is raised
     def check_vitals(self, stat):
-        status = roboclaw.ReadError(self.address)[1]
+        try:
+            status = roboclaw.ReadError(self.address)[1]
+        except OSError as e:
+            rospy.logwarn("Diagnostics OSError: %d", e.errno)
+            rospy.logdebug(e)
         state, message = self.ERRORS[status]
         stat.summary(state, message)
         try:
