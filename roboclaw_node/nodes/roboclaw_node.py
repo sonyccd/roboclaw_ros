@@ -135,7 +135,7 @@ class Node:
                        0x4000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M1 home"),
                        0x8000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M2 home")}
 
-        rospy.init_node("roboclaw_node")
+        rospy.init_node("roboclaw_node", log_level=rospy.DEBUG)
         rospy.on_shutdown(self.shutdown)
         rospy.loginfo("Connecting to roboclaw")
         dev_name = rospy.get_param("~dev", "/dev/ttyACM0")
@@ -180,7 +180,17 @@ class Node:
 
         self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.last_set_speed_time = rospy.get_rostime()
+
         rospy.Subscriber("cmd_vel", Twist, self.cmd_vel_callback)
+
+        rospy.sleep(1)
+
+        rospy.logdebug("dev %s", dev_name)
+        rospy.logdebug("baud %d", baud_rate)
+        rospy.logdebug("address %d", self.address)
+        rospy.logdebug("max_speed %f", self.MAX_SPEED)
+        rospy.logdebug("ticks_per_meter %f", self.TICKS_PER_METER)
+        rospy.logdebug("base_width %f", self.BASE_WIDTH)
 
     def run(self):
         rospy.loginfo("Starting motor drive")
@@ -244,10 +254,10 @@ class Node:
         state, message = self.ERRORS[status]
         stat.summary(state, message)
         try:
-            stat.add("Main Batt V:", roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10)
-            stat.add("Logic Batt V:", roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10)
-            stat.add("Temp1 C:", roboclaw.ReadTemp(self.address)[1] / 10)
-            stat.add("Temp2 C:", roboclaw.ReadTemp2(self.address)[1] / 10)
+            stat.add("Main Batt V:", float(roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10))
+            stat.add("Logic Batt V:", float(roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10))
+            stat.add("Temp1 C:", float(roboclaw.ReadTemp(self.address)[1] / 10))
+            stat.add("Temp2 C:", float(roboclaw.ReadTemp2(self.address)[1] / 10))
         except OSError as e:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
