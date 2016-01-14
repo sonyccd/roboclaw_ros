@@ -12,6 +12,8 @@ from nav_msgs.msg import Odometry
 __author__ = "bwbazemore@uga.edu (Brad Bazemore)"
 
 
+# TODO need to find some better was of handling OSerror 11 or preventing it, any ideas?
+
 class EncoderOdom:
     def __init__(self, ticks_per_meter, base_width):
         self.TICKS_PER_METER = ticks_per_meter
@@ -197,6 +199,15 @@ class Node:
         r_time = rospy.Rate(10)
         while not rospy.is_shutdown():
 
+            if rospy.get_rostime - self.last_set_speed_time > 1:
+                rospy.loginfo("Did not get comand for 1 second, stopping")
+                try:
+                    roboclaw.ForwardM1(self.address, 0)
+                    roboclaw.ForwardM2(self.address, 0)
+                except OSError as e:
+                    rospy.logerr("Could not stop")
+                    rospy.logdebug(e)
+
             # TODO need find solution to the OSError11 looks like sync problem with serial
             try:
                 status1, enc1, crc1 = roboclaw.ReadEncM1(self.address)
@@ -267,11 +278,20 @@ class Node:
             rospy.logdebug(e)
         return stat
 
-    # TODO: need clean shutdown so motors stop even if new msgs are ariving
+    # TODO: need clean shutdown so motors stop even if new msgs are arriving
     def shutdown(self):
         rospy.loginfo("Shutting down")
-        roboclaw.ForwardM1(self.address, 0)
-        roboclaw.ForwardM2(self.address, 0)
+        try:
+            roboclaw.ForwardM1(self.address, 0)
+            roboclaw.ForwardM2(self.address, 0)
+        except OSError:
+            rospy.logerr("Shutdown did not work trying again")
+            try:
+                roboclaw.ForwardM1(self.address, 0)
+                roboclaw.ForwardM2(self.address, 0)
+            except OSError as e:
+                rospy.logerr("Could not shutdown motors!!!!")
+                rospy.logdebug(e)
 
 
 if __name__ == "__main__":
