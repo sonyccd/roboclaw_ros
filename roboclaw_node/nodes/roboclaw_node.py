@@ -199,7 +199,7 @@ class Node:
         r_time = rospy.Rate(10)
         while not rospy.is_shutdown():
 
-            if rospy.get_rostime - self.last_set_speed_time > 1:
+            if (rospy.get_rostime() - self.last_set_speed_time).to_sec() > 1:
                 rospy.loginfo("Did not get comand for 1 second, stopping")
                 try:
                     roboclaw.ForwardM1(self.address, 0)
@@ -266,6 +266,7 @@ class Node:
         except OSError as e:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
+            return
         state, message = self.ERRORS[status]
         stat.summary(state, message)
         try:
