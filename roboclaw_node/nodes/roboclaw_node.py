@@ -225,10 +225,11 @@ class Node:
                 rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
                 rospy.logdebug(e)
 
-            rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
-            self.encodm.update_publish(enc1, enc2)
+            if enc1 is not None & enc2 is not None:
+                rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
+                self.encodm.update_publish(enc1, enc2)
 
-            self.updater.update()
+                self.updater.update()
             r_time.sleep()
 
     def cmd_vel_callback(self, twist):
