@@ -209,6 +209,9 @@ class Node:
                     rospy.logdebug(e)
 
             # TODO need find solution to the OSError11 looks like sync problem with serial
+            status1, enc1, crc1 = None
+            status2, enc2, crc2 = None
+
             try:
                 status1, enc1, crc1 = roboclaw.ReadEncM1(self.address)
             except ValueError:
