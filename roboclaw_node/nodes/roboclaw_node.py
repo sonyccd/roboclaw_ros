@@ -225,7 +225,7 @@ class Node:
                 rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
                 rospy.logdebug(e)
 
-            if enc1 is not None & enc2 is not None:
+            if (enc1 in locals()) & (enc2 in locals()):
                 rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
                 self.encodm.update_publish(enc1, enc2)
 
