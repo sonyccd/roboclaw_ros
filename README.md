@@ -43,7 +43,7 @@ The launch file can be configure at the command line with arguments, by changing
 
 |Parameter|Default|Definition|
 |-----|----------|-------|
-|dev|/dev/ttyACM0|Dev that is the Robotclaw|
+|dev|/dev/ttyACM0|Dev that is the Roboclaw|
 |baud|115200|Baud rate the Roboclaw is configured for|
 |address|128|The address the Roboclaw is set to, 128 is 0x80|
 |max_speed|2.0|Max speed allowed for motors in meters per second|
