@@ -6,7 +6,7 @@ Before you use this package you need to calibrate the velocity PID on the Robocl
 installation of the free software [IonMotion](http://downloads.ionmc.com/software/IonMotion/ionmotion.htm) (Windows only).
 You do not need to tune for position just velocity.
 
-From the user manual:
+From the user [manual](http://downloads.ionmc.com/docs/roboclaw_user_manual.pdf):
 >IonMotion includes the option to autotune velocity and or position values. To use these options
 you should first make sure your encoder and motor are running in the correct direction and that
 basic PWM control of the motor works as expected. To do this go to the PWM Settings screen in
