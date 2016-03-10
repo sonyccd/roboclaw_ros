@@ -58,5 +58,5 @@ Velocity commands for the mobile base.
 /odom [(nav_msgs/Odometry)](http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)  
 Odometry output from the mobile base.
 
-#IF YOU HAVE PROBLEMS:
-Please file an issue, it makes it far easier to keep track of what needs to be fixed. It also allows others that might have solved the problem to contribute.
+#IF SOMETHING IS BROEKN:
+Please file an issue, it makes it far easier to keep track of what needs to be fixed. It also allows others that might have solved the problem to contribute.  If you are confused feel free to email me, I might have overlooked something in my readme.
