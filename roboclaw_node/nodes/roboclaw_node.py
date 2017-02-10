@@ -86,7 +86,7 @@ class EncoderOdom:
 
         br = tf.TransformBroadcaster()
         br.sendTransform((cur_x, cur_y, 0),
-                         tf.transformations.quaternion_from_euler(0, 0, cur_theta),
+                         tf.transformations.quaternion_from_euler(0, 0, -cur_theta),
                          current_time,
                          "base_link",
                          "odom")
