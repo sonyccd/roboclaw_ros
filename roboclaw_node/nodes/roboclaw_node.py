@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from math import pi, cos, sin
+from numbers import Number
 
 import diagnostic_msgs
 import diagnostic_updater
@@ -228,7 +229,7 @@ class Node:
                 rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
                 rospy.logdebug(e)
 
-            if ('enc1' in vars()) and ('enc2' in vars()):
+            if (isinstance(enc1,Number) and isinstance(enc2,Number)):
                 rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
                 self.encodm.update_publish(enc1, enc2)
 
