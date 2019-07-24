@@ -4,7 +4,7 @@
 
 This is the ROS driver for the Roboclaw motor controllers made by [Ion Motion Control](http://www.ionmc.com/).
 
-#HELP: I have been busy with another project that is not using robo claw. Message me if you want to become a contributer and help keep this thing alive!
+#HELP: I have been busy with another project that is not using robo claw. Message me if you want to become a contributor and help keep this thing alive!
 
 ## Before you begin
 Before you use this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
@@ -33,7 +33,7 @@ be manually set for the motor before starting. Autotune functions usually return
 values but in most cases you will still need to manually adjust them for optimum performance.
 
 ## Usage
-Just clone the repo into your catkin workspace. It contains the ROS package and the motor controller driver.  Remmeber to make sure ROS has permisions to use the dev port you give it.
+Just clone the repo into your catkin workspace. It contains the ROS package and the motor controller driver.  Remember to make sure ROS has permissions to use the dev port you give it.
 ```bash
 cd <workspace>/src
 git clone https://github.com/sonyccd/roboclaw_ros.git
@@ -54,11 +54,14 @@ The launch file can be configure at the command line with arguments, by changing
 |max_speed|2.0|Max speed allowed for motors in meters per second|
 |ticks_per_meter|4342.2|The number of encoder ticks per meter of movement|
 |base_width|0.315|Width from one wheel edge to another in meters|
+|pub_odom|true|Publishes Odometry if set to true|
+|stop_movement|true|Stops movement if no velocity commands are received for 1 sec|
 
 ## Topics
 ###Subscribed
 /cmd_vel [(geometry_msgs/Twist)](http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html)  
 Velocity commands for the mobile base.
+
 ###Published
 /odom [(nav_msgs/Odometry)](http://docs.ros.org/api/nav_msgs/html/msg/Odometry.html)  
 Odometry output from the mobile base.

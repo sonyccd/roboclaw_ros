@@ -8,14 +8,19 @@
     <arg name="ticks_per_meter" default="4342.2"/>
     <arg name="base_width" default="0.315"/>
     <arg name="run_diag" default="true"/>
+    <arg name="pub_odom" default="true"/>
+    <arg name="stop_movement" default="true"/>
 
-    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node">
+
+    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node" output="screen">
         <param name="~dev" value="$(arg dev)"/>
         <param name="~baud" value="$(arg baud)"/>
         <param name="~address" value="$(arg address)"/>
         <param name="~max_speed" value="$(arg max_speed)"/>
         <param name="~ticks_per_meter" value="$(arg ticks_per_meter)"/>
         <param name="~base_width" value="$(arg base_width)"/>
+        <param name="~pub_odom" value="$(arg pub_odom)"/>
+        <param name="~stop_movement" value="$(arg stop_movement)"/>
     </node>
 
     <node pkg="diagnostic_aggregator" type="aggregator_node"
