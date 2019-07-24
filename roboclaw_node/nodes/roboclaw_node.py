@@ -242,7 +242,7 @@ class Node:
         self.STOP_MOVEMENT = rospy.get_param("~stop_movement", "true")
 
         self.encodm = None
-        if (self.PUB_ODOM == "true"):
+        if (self.PUB_ODOM):
             self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.movement = Movement(self.address, self.MAX_SPEED, self.BASE_WIDTH, self.TICKS_PER_METER)
         self.last_set_speed_time = rospy.get_rostime()
@@ -264,7 +264,7 @@ class Node:
         while not rospy.is_shutdown():
 
             # stop movement if robot doesn't recieve commands for 1 sec
-            if (self.STOP_MOVEMENT == "true" and rospy.get_rostime() - self.movement.last_set_speed_time.to_sec() > 1):
+            if (self.STOP_MOVEMENT and not self.movement.stopped and rospy.get_rostime().to_sec() - self.movement.last_set_speed_time.to_sec() > 1):
                 rospy.loginfo("Did not get command for 1 second, stopping")
                 try:
                     roboclaw.ForwardM1(self.address, 0)
