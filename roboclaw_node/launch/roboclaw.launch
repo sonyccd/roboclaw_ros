@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <launch>
 
-    <arg name="dev" default="/dev/ttyACM0"/>
+    <arg name="dev" default="/dev/roboclaw"/>
     <arg name="baud" default="115200"/>
     <arg name="address" default="128"/>
-    <arg name="max_speed" default="2.0"/>
-    <arg name="ticks_per_meter" default="4342.2"/>
-    <arg name="base_width" default="0.315"/>
+    <arg name="max_speed" default="1.0"/>
+    <arg name="ticks_per_meter" default="8130"/>
+    <arg name="base_width" default="0.2"/>
     <arg name="run_diag" default="true"/>
 
     <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node">
