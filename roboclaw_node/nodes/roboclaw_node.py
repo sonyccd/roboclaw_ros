@@ -301,7 +301,11 @@ class Node:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
             return
-        state, message = self.ERRORS[status]
+        try:
+            state, message = self.ERRORS[status]
+        except KeyError:
+            state = diagnostic_msgs.msg.DiagnosticStatus.ERROR
+            message = "Unknown or various errors: 0x{0:x}".format(status)
         stat.summary(state, message)
         try:
             with self.mutex:
