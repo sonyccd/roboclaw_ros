@@ -309,10 +309,10 @@ class Node:
         stat.summary(state, message)
         try:
             with self.mutex:
-                stat.add("Main Batt V:", float(self.roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10))
-                stat.add("Logic Batt V:", float(self.roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10))
-                stat.add("Temp1 C:", float(self.roboclaw.ReadTemp(self.address)[1] / 10))
-                stat.add("Temp2 C:", float(self.roboclaw.ReadTemp2(self.address)[1] / 10))
+                stat.add("Main Batt V:", float(self.roboclaw.ReadMainBatteryVoltage(self.address)[1]) / 10)
+                stat.add("Logic Batt V:", float(self.roboclaw.ReadLogicBatteryVoltage(self.address)[1]) / 10)
+                stat.add("Temp1 C:", float(self.roboclaw.ReadTemp(self.address)[1]) / 10)
+                stat.add("Temp2 C:", float(self.roboclaw.ReadTemp2(self.address)[1]) / 10)
         except OSError as e:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
