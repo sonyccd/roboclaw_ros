@@ -162,15 +162,20 @@ class Node:
 
         # TODO need someway to check if address is correct
         self.roboclaw = roboclaw(dev_name, baud_rate)
+        
+        status = None
         try:
-            self.roboclaw.Open()
+            status = self.roboclaw.Open()
         except Exception as e:
             rospy.logerr("Could not connect to Roboclaw")
             rospy.logdebug(e)
             rospy.signal_shutdown("Could not connect to Roboclaw")
-        else:
-            rospy.loginfo("Sucessfully open connection to RoboClaw")
         
+        if status:
+            rospy.loginfo("Sucessfully open connection to RoboClaw")
+        else:
+            rospy.signal_shutdown("Could not connect to Roboclaw")
+
         self.updater = diagnostic_updater.Updater()
         self.updater.setHardwareID("Roboclaw")
         self.updater.add(diagnostic_updater.
@@ -179,32 +184,15 @@ class Node:
         rospy.sleep(1)
         try:
             with self.mutex:
-                # (1, 'USB Roboclaw HV60 2x60a v4.1.34\n')
                 version = self.roboclaw.ReadVersion(self.address)
-                # rospy.loginfo('Roboclaw version: ', version)
         except Exception as e:
             rospy.logwarn("Problem getting roboclaw version")
-            # rospy.logdebug(e)
-            # rospy.signal_shutdown("Could not connect to Roboclaw")
-            rospy.logwarn("Try one more time")
-            try:
-                with self.mutex:
-                    # (1, 'USB Roboclaw HV60 2x60a v4.1.34\n')
-                    version = self.roboclaw.ReadVersion(self.address)
-            except Exception as e:
-                rospy.logerr("Failed to read roboclaw version, controller function improperly!!!")
+            rospy.logdebug(e)
+            rospy.signal_shutdown("Failed to read roboclaw version, controller function improperly!!!")
 
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
-            rospy.logwarn("Try one more time")
-            try:
-                with self.mutex:
-                    version = self.roboclaw.ReadVersion(self.address)
-            except Exception as e:
-                rospy.logerr("Failed to read roboclaw version, controller function improperly!!!")
-            
             rospy.signal_shutdown("Failed to read roboclaw version, controller function improperly!!!")
-
         else:
             rospy.loginfo(repr(version[1]))
         
