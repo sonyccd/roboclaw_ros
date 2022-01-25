@@ -149,7 +149,7 @@ class Node:
                         0x02000000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Position Error Limit")}
 
         self.mutex = threading.Lock()
-        rospy.init_node("roboclaw_node")
+        rospy.init_node("roboclaw_node", disable_signals=True)
         rospy.on_shutdown(self.shutdown)
         rospy.loginfo("Connecting to roboclaw")
         dev_name = rospy.get_param("~dev", "/dev/ttyACM0")
@@ -167,7 +167,7 @@ class Node:
         except Exception as e:
             rospy.logerr("Could not connect to Roboclaw")
             rospy.logdebug(e)
-            rospy.on_shutdown("Could not connect to Roboclaw")
+            rospy.signal_shutdown("Could not connect to Roboclaw")
         else:
             rospy.loginfo("Sucessfully open connection to RoboClaw")
         
@@ -176,17 +176,35 @@ class Node:
         self.updater.add(diagnostic_updater.
                          FunctionDiagnosticTask("Vitals", self.check_vitals))
         
+        rospy.sleep(1)
         try:
             with self.mutex:
                 # (1, 'USB Roboclaw HV60 2x60a v4.1.34\n')
                 version = self.roboclaw.ReadVersion(self.address)
+                # rospy.loginfo('Roboclaw version: ', version)
         except Exception as e:
             rospy.logwarn("Problem getting roboclaw version")
-            rospy.logdebug(e)
-            pass
+            # rospy.logdebug(e)
+            # rospy.signal_shutdown("Could not connect to Roboclaw")
+            rospy.logwarn("Try one more time")
+            try:
+                with self.mutex:
+                    # (1, 'USB Roboclaw HV60 2x60a v4.1.34\n')
+                    version = self.roboclaw.ReadVersion(self.address)
+            except Exception as e:
+                rospy.logerr("Failed to read roboclaw version, controller function improperly!!!")
 
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
+            rospy.logwarn("Try one more time")
+            try:
+                with self.mutex:
+                    version = self.roboclaw.ReadVersion(self.address)
+            except Exception as e:
+                rospy.logerr("Failed to read roboclaw version, controller function improperly!!!")
+            
+            rospy.signal_shutdown("Failed to read roboclaw version, controller function improperly!!!")
+
         else:
             rospy.loginfo(repr(version[1]))
         
@@ -197,14 +215,12 @@ class Node:
         self.MAX_SPEED          = rospy.get_param("~max_speed", 2.0)
         self.TICKS_PER_METER    = rospy.get_param("~ticks_per_meter", 4342.2)
         self.BASE_WIDTH         = rospy.get_param("~base_width", 0.315)
-        self.CMD_FREQ      = rospy.get_param("~cmd_frequency", 10)
+        self.CMD_FREQ           = rospy.get_param("~cmd_frequency", 10)
 
-        self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
-        self.last_set_speed_time = rospy.get_rostime()
+        self.encodm                 = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
+        self.last_set_speed_time    = rospy.get_rostime()
 
         rospy.Subscriber("cmd_vel", Twist, self.cmd_vel_callback)
-
-        rospy.sleep(1)
 
         rospy.logdebug("dev %s", dev_name)
         rospy.logdebug("baud %d", baud_rate)
@@ -332,7 +348,9 @@ class Node:
             except OSError as e:
                 rospy.logerr("Could not shutdown motors!!!!")
                 rospy.logdebug(e)
-
+        self.roboclaw._port.flushOutput()
+        self.roboclaw._port.flushInput()
+        self.roboclaw._port.flush()
 
 if __name__ == "__main__":
     try:
