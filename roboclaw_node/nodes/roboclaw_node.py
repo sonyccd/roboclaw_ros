@@ -156,15 +156,18 @@ class Node:
             rospy.logerr("Could not connect to Roboclaw")
             rospy.logdebug(e)
             rospy.on_shutdown("Could not connect to Roboclaw")
-
+        else:
+            rospy.loginfo("Sucessfully open connection to RoboClaw")
+        
         self.updater = diagnostic_updater.Updater()
         self.updater.setHardwareID("Roboclaw")
         self.updater.add(diagnostic_updater.
                          FunctionDiagnosticTask("Vitals", self.check_vitals))
-
+        
         try:
+            rospy.sleep(1)
+            # (1, 'USB Roboclaw HV60 2x60a v4.1.34\n')
             version = self.roboclaw.ReadVersion(self.address)
-            rospy.loginfo('RoboClaw version:', version)
         except Exception as e:
             rospy.logwarn("Problem getting roboclaw version")
             rospy.logdebug(e)
@@ -173,14 +176,15 @@ class Node:
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
         else:
-            rospy.logdebug(repr(version[1]))
+            rospy.loginfo(repr(version[1]))
 
         self.roboclaw.SpeedM1M2(self.address, 0, 0)
         self.roboclaw.ResetEncoders(self.address)
 
-        self.MAX_SPEED = float(rospy.get_param("~max_speed", "2.0"))
-        self.TICKS_PER_METER = float(rospy.get_param("~tick_per_meter", "4342.2"))
-        self.BASE_WIDTH = float(rospy.get_param("~base_width", "0.315"))
+        self.MAX_SPEED          = rospy.get_param("~max_speed", 2.0)
+        self.TICKS_PER_METER    = rospy.get_param("~tick_per_meter", 4342.2)
+        self.BASE_WIDTH         = rospy.get_param("~base_width", 0.315)
+        self.CMD_HOLD_TIME      = rospy.get_param("~cmd_hold_duration", .1)
 
         self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
         self.last_set_speed_time = rospy.get_rostime()
@@ -201,7 +205,7 @@ class Node:
         r_time = rospy.Rate(10)
         while not rospy.is_shutdown():
 
-            if (rospy.get_rostime() - self.last_set_speed_time).to_sec() > 1:
+            if (rospy.get_rostime() - self.last_set_speed_time).to_sec() > self.CMD_HOLD_TIME:
                 # rospy.loginfo("Did not get command for 1 second, stopping")
                 try:
                     self.roboclaw.ForwardM1(self.address, 0)

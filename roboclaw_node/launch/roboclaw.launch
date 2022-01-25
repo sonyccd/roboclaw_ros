@@ -5,11 +5,11 @@
     <arg name="baud" default="115200"/>
     <arg name="address" default="128"/>
     <arg name="max_speed" default="2.0"/>
-    <arg name="ticks_per_meter" default="4342.2"/>
-    <arg name="base_width" default="0.315"/>
-    <arg name="run_diag" default="true"/>
+    <arg name="ticks_per_meter" default="1024"/>
+    <arg name="base_width" default="0.6223"/>
+    <arg name="cmd_hold_duration" default="0.05"/>
 
-    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node" output="screen">
+    <node pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node" output="screen">
         <param name="~dev" value="$(arg dev)"/>
         <param name="~baud" value="$(arg baud)"/>
         <param name="~address" value="$(arg address)"/>
