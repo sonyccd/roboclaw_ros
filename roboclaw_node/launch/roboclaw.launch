@@ -5,17 +5,18 @@
     <arg name="baud" default="115200"/>
     <arg name="address" default="128"/>
     <arg name="max_speed" default="2.0"/>
-    <arg name="ticks_per_meter" default="4342.2"/>
-    <arg name="base_width" default="0.315"/>
-    <arg name="run_diag" default="true"/>
+    <arg name="ticks_per_meter" default="1024"/>
+    <arg name="base_width" default="0.6223"/>
+    <arg name="cmd_frequency" default="20"/>
 
-    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node">
+    <node pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node" output="screen">
         <param name="~dev" value="$(arg dev)"/>
         <param name="~baud" value="$(arg baud)"/>
         <param name="~address" value="$(arg address)"/>
         <param name="~max_speed" value="$(arg max_speed)"/>
         <param name="~ticks_per_meter" value="$(arg ticks_per_meter)"/>
         <param name="~base_width" value="$(arg base_width)"/>
+        <param name="~cmd_frequency" value="$(arg cmd_frequency)"/>
     </node>
 
     <node pkg="diagnostic_aggregator" type="aggregator_node"

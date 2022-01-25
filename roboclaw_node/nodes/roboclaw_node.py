@@ -1,9 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+import threading
+from numbers import Number
 from math import pi, cos, sin
 
 import diagnostic_msgs
 import diagnostic_updater
-import roboclaw_driver.roboclaw_driver as roboclaw
+from roboclaw_driver.roboclaw_3 import Roboclaw as roboclaw
+
 import rospy
 import tf
 from geometry_msgs.msg import Quaternion, Twist
@@ -86,7 +89,7 @@ class EncoderOdom:
 
         br = tf.TransformBroadcaster()
         br.sendTransform((cur_x, cur_y, 0),
-                         tf.transformations.quaternion_from_euler(0, 0, -cur_theta),
+                         tf.transformations.quaternion_from_euler(0, 0, cur_theta),
                          current_time,
                          "base_link",
                          "odom")
@@ -119,25 +122,34 @@ class EncoderOdom:
 class Node:
     def __init__(self):
 
-        self.ERRORS = {0x0000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "Normal"),
-                       0x0001: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 over current"),
-                       0x0002: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 over current"),
-                       0x0004: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Emergency Stop"),
-                       0x0008: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature1"),
-                       0x0010: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature2"),
-                       0x0020: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Main batt voltage high"),
-                       0x0040: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic batt voltage high"),
-                       0x0080: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic batt voltage low"),
-                       0x0100: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 driver fault"),
-                       0x0200: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 driver fault"),
-                       0x0400: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main batt voltage high"),
-                       0x0800: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main batt voltage low"),
-                       0x1000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature1"),
-                       0x2000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature2"),
-                       0x4000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M1 home"),
-                       0x8000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "M2 home")}
+        self.ERRORS = {0x000000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "Normal"),
+                        0x000001: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "E-Stop"),
+                        0x000002: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature1"),
+                        0x000004: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Temperature2"),
+                        0x000008: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Main Voltage High"),
+                        0x000010: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic Voltage High"),
+                        0x000020: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "Logic Voltage Low"),
+                        0x000040: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M1 Driver Fault"),
+                        0x000080: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M2 Driver Fault"),
+                        0x000100: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M1 Speed"),
+                        0x000200: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M2 Speed"),
+                        0x000400: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M1 Position"),
+                        0x000800: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M2 Position"),
+                        0x001000: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M1 Current"),
+                        0x002000: (diagnostic_msgs.msg.DiagnosticStatus.ERROR, "M2 Current"),
+                        0x010000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M1 Over Current"),
+                        0x020000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "M2 Over Current"),
+                        0x040000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main Voltage High"),
+                        0x080000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Main Voltage Low"),
+                        0x100000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature1"),
+                        0x200000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Temperature2"),
+                        0x400000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "S4 Signal Triggered"),
+                        0x800000: (diagnostic_msgs.msg.DiagnosticStatus.OK, "S5 Signal Triggered"),
+                        0x01000000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Speed Error Limit"),
+                        0x02000000: (diagnostic_msgs.msg.DiagnosticStatus.WARN, "Position Error Limit")}
 
-        rospy.init_node("roboclaw_node")
+        self.mutex = threading.Lock()
+        rospy.init_node("roboclaw_node", disable_signals=True)
         rospy.on_shutdown(self.shutdown)
         rospy.loginfo("Connecting to roboclaw")
         dev_name = rospy.get_param("~dev", "/dev/ttyACM0")
@@ -149,43 +161,54 @@ class Node:
             rospy.signal_shutdown("Address out of range")
 
         # TODO need someway to check if address is correct
+        self.roboclaw = roboclaw(dev_name, baud_rate)
+        
+        status = None
         try:
-            roboclaw.Open(dev_name, baud_rate)
+            status = self.roboclaw.Open()
         except Exception as e:
-            rospy.logfatal("Could not connect to Roboclaw")
+            rospy.logerr("Could not connect to Roboclaw")
             rospy.logdebug(e)
+            rospy.signal_shutdown("Could not connect to Roboclaw")
+        
+        if status:
+            rospy.loginfo("Sucessfully open connection to RoboClaw")
+        else:
             rospy.signal_shutdown("Could not connect to Roboclaw")
 
         self.updater = diagnostic_updater.Updater()
         self.updater.setHardwareID("Roboclaw")
         self.updater.add(diagnostic_updater.
                          FunctionDiagnosticTask("Vitals", self.check_vitals))
-
+        
+        rospy.sleep(1)
         try:
-            version = roboclaw.ReadVersion(self.address)
+            with self.mutex:
+                version = self.roboclaw.ReadVersion(self.address)
         except Exception as e:
             rospy.logwarn("Problem getting roboclaw version")
             rospy.logdebug(e)
-            pass
+            rospy.signal_shutdown("Failed to read roboclaw version, controller function improperly!!!")
 
         if not version[0]:
             rospy.logwarn("Could not get version from roboclaw")
+            rospy.signal_shutdown("Failed to read roboclaw version, controller function improperly!!!")
         else:
-            rospy.logdebug(repr(version[1]))
+            rospy.loginfo(repr(version[1]))
+        
+        with self.mutex:
+            self.roboclaw.SpeedM1M2(self.address, 0, 0)
+            self.roboclaw.ResetEncoders(self.address)
 
-        roboclaw.SpeedM1M2(self.address, 0, 0)
-        roboclaw.ResetEncoders(self.address)
+        self.MAX_SPEED          = rospy.get_param("~max_speed", 2.0)
+        self.TICKS_PER_METER    = rospy.get_param("~ticks_per_meter", 4342.2)
+        self.BASE_WIDTH         = rospy.get_param("~base_width", 0.315)
+        self.CMD_FREQ           = rospy.get_param("~cmd_frequency", 10)
 
-        self.MAX_SPEED = float(rospy.get_param("~max_speed", "2.0"))
-        self.TICKS_PER_METER = float(rospy.get_param("~tick_per_meter", "4342.2"))
-        self.BASE_WIDTH = float(rospy.get_param("~base_width", "0.315"))
-
-        self.encodm = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
-        self.last_set_speed_time = rospy.get_rostime()
+        self.encodm                 = EncoderOdom(self.TICKS_PER_METER, self.BASE_WIDTH)
+        self.last_set_speed_time    = rospy.get_rostime()
 
         rospy.Subscriber("cmd_vel", Twist, self.cmd_vel_callback)
-
-        rospy.sleep(1)
 
         rospy.logdebug("dev %s", dev_name)
         rospy.logdebug("baud %d", baud_rate)
@@ -196,14 +219,15 @@ class Node:
 
     def run(self):
         rospy.loginfo("Starting motor drive")
-        r_time = rospy.Rate(10)
+        r_time = rospy.Rate(self.CMD_FREQ)
         while not rospy.is_shutdown():
 
-            if (rospy.get_rostime() - self.last_set_speed_time).to_sec() > 1:
-                rospy.loginfo("Did not get command for 1 second, stopping")
+            if (rospy.get_rostime() - self.last_set_speed_time).to_sec() > 1./float(self.CMD_FREQ):
+                # rospy.loginfo("Did not get command for 1 second, stopping")
                 try:
-                    roboclaw.ForwardM1(self.address, 0)
-                    roboclaw.ForwardM2(self.address, 0)
+                    with self.mutex:
+                        self.roboclaw.ForwardM1(self.address, 0)
+                        self.roboclaw.ForwardM2(self.address, 0)
                 except OSError as e:
                     rospy.logerr("Could not stop")
                     rospy.logdebug(e)
@@ -213,7 +237,8 @@ class Node:
             status2, enc2, crc2 = None, None, None
 
             try:
-                status1, enc1, crc1 = roboclaw.ReadEncM1(self.address)
+                with self.mutex:
+                    status1, enc1, crc1 = self.roboclaw.ReadEncM1(self.address)
             except ValueError:
                 pass
             except OSError as e:
@@ -221,16 +246,17 @@ class Node:
                 rospy.logdebug(e)
 
             try:
-                status2, enc2, crc2 = roboclaw.ReadEncM2(self.address)
+                with self.mutex:
+                    status2, enc2, crc2 = self.roboclaw.ReadEncM2(self.address)
             except ValueError:
                 pass
             except OSError as e:
                 rospy.logwarn("ReadEncM2 OSError: %d", e.errno)
                 rospy.logdebug(e)
 
-            if ('enc1' in vars()) and ('enc2' in vars()):
+            if ((isinstance(enc1,Number) and isinstance(enc2,Number))):
                 rospy.logdebug(" Encoders %d %d" % (enc1, enc2))
-                self.encodm.update_publish(enc1, enc2)
+                self.encodm.update_publish(enc2, enc1)
 
                 self.updater.update()
             r_time.sleep()
@@ -250,15 +276,16 @@ class Node:
         vr_ticks = int(vr * self.TICKS_PER_METER)  # ticks/s
         vl_ticks = int(vl * self.TICKS_PER_METER)
 
-        rospy.logdebug("vr_ticks:%d vl_ticks: %d", vr_ticks, vl_ticks)
+        rospy.loginfo("vr_ticks:%8d vl_ticks: %8d", vr_ticks, vl_ticks)
 
         try:
             # This is a hack way to keep a poorly tuned PID from making noise at speed 0
-            if vr_ticks is 0 and vl_ticks is 0:
-                roboclaw.ForwardM1(self.address, 0)
-                roboclaw.ForwardM2(self.address, 0)
-            else:
-                roboclaw.SpeedM1M2(self.address, vr_ticks, vl_ticks)
+            with self.mutex:
+                if vr_ticks == 0 and vl_ticks == 0:
+                    self.roboclaw.ForwardM1(self.address, 0)
+                    self.roboclaw.ForwardM2(self.address, 0)
+                else:
+                    self.roboclaw.SpeedM1M2(self.address, vr_ticks, vl_ticks)
         except OSError as e:
             rospy.logwarn("SpeedM1M2 OSError: %d", e.errno)
             rospy.logdebug(e)
@@ -266,18 +293,27 @@ class Node:
     # TODO: Need to make this work when more than one error is raised
     def check_vitals(self, stat):
         try:
-            status = roboclaw.ReadError(self.address)[1]
+            with self.mutex:
+                status = self.roboclaw.ReadError(self.address)[1]
         except OSError as e:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
             return
-        state, message = self.ERRORS[status]
-        stat.summary(state, message)
+        
         try:
-            stat.add("Main Batt V:", float(roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10))
-            stat.add("Logic Batt V:", float(roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10))
-            stat.add("Temp1 C:", float(roboclaw.ReadTemp(self.address)[1] / 10))
-            stat.add("Temp2 C:", float(roboclaw.ReadTemp2(self.address)[1] / 10))
+            state, message = self.ERRORS[status]
+        except KeyError:
+            state = diagnostic_msgs.msg.DiagnosticStatus.ERROR
+            message = "Unknown or various errors: 0x{0:x}".format(status)
+
+        stat.summary(state, message)
+        
+        try:
+            with self.mutex:
+                stat.add("Main Batt V:", float(self.roboclaw.ReadMainBatteryVoltage(self.address)[1] / 10))
+                stat.add("Logic Batt V:", float(self.roboclaw.ReadLogicBatteryVoltage(self.address)[1] / 10))
+                stat.add("Temp1 C:", float(self.roboclaw.ReadTemp(self.address)[1] / 10))
+                stat.add("Temp2 C:", float(self.roboclaw.ReadTemp2(self.address)[1] / 10))
         except OSError as e:
             rospy.logwarn("Diagnostics OSError: %d", e.errno)
             rospy.logdebug(e)
@@ -287,17 +323,22 @@ class Node:
     def shutdown(self):
         rospy.loginfo("Shutting down")
         try:
-            roboclaw.ForwardM1(self.address, 0)
-            roboclaw.ForwardM2(self.address, 0)
+            with self.mutex:
+                self.roboclaw.ForwardM1(self.address, 0)
+                self.roboclaw.ForwardM2(self.address, 0)
+        
         except OSError:
             rospy.logerr("Shutdown did not work trying again")
             try:
-                roboclaw.ForwardM1(self.address, 0)
-                roboclaw.ForwardM2(self.address, 0)
+                with self.mutex:
+                    self.roboclaw.ForwardM1(self.address, 0)
+                    self.roboclaw.ForwardM2(self.address, 0)
             except OSError as e:
                 rospy.logerr("Could not shutdown motors!!!!")
                 rospy.logdebug(e)
-
+        self.roboclaw._port.flushOutput()
+        self.roboclaw._port.flushInput()
+        self.roboclaw._port.flush()
 
 if __name__ == "__main__":
     try:

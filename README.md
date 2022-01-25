@@ -4,7 +4,7 @@
 
 This is the ROS driver for the Roboclaw motor controllers made by [Ion Motion Control](http://www.ionmc.com/).
 
-#HELP: I have been busy with another project that is not using robo claw. Message me if you want to become a contributer and help keep this thing alive!
+#HELP: I have been busy with another project that is not using robo claw. Message me if you want to become a contributor and help keep this thing alive!
 
 ## Before you begin
 Before you use this package you need to calibrate the velocity PID on the Roboclaw.  This will requare the
@@ -33,7 +33,7 @@ be manually set for the motor before starting. Autotune functions usually return
 values but in most cases you will still need to manually adjust them for optimum performance.
 
 ## Usage
-Just clone the repo into your catkin workspace. It contains the ROS package and the motor controller driver.  Remmeber to make sure ROS has permisions to use the dev port you give it.
+Just clone the repo into your catkin workspace. It contains the ROS package and the motor controller driver.  Remeber to make sure ROS has permissions to use the dev port you give it.
 ```bash
 cd <workspace>/src
 git clone https://github.com/sonyccd/roboclaw_ros.git
