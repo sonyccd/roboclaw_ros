@@ -3,4 +3,4 @@ analyzers:
     type: GenericAnalyzer
     path: Roboclaw
     startswith: 'roboclaw_node'
-    num_items: 1
+    num_items: 2

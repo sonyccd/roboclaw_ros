@@ -829,11 +829,11 @@ def SetMaxVoltageLogicBattery(address, val):
 
 
 def SetM1VelocityPID(address, p, i, d, qpps):
-    return _write4444(address, Cmd.SETM1PID, long(d * 65536), long(p * 65536), long(i * 65536), qpps)
+    return _write4444(address, Cmd.SETM1PID, int(d * 65536), int(p * 65536), int(i * 65536), qpps)
 
 
 def SetM2VelocityPID(address, p, i, d, qpps):
-    return _write4444(address, Cmd.SETM2PID, long(d * 65536), long(p * 65536), long(i * 65536), qpps)
+    return _write4444(address, Cmd.SETM2PID, int(d * 65536), int(p * 65536), int(i * 65536), qpps)
 
 
 def ReadISpeedM1(address):
@@ -877,7 +877,7 @@ def SpeedAccelM2(address, accel, speed):
 
 
 def SpeedAccelM1M2(address, accel, speed1, speed2):
-    return _write4S4S4(address, Cmd.M1SPEEDACCEL, accel, speed1, speed2)
+    return _write4S4S4(address, Cmd.MIXEDSPEEDACCEL, accel, speed1, speed2)
 
 
 def SpeedDistanceM1(address, speed, distance, buffer):
@@ -938,7 +938,7 @@ def ReadCurrents(address):
 
 
 def SpeedAccelM1M2_2(address, accel1, speed1, accel2, speed2):
-    return _write4S44S4(address, Cmd.MIXEDSPEED2ACCEL, accel, speed1, accel2, speed2)
+    return _write4S44S4(address, Cmd.MIXEDSPEED2ACCEL, accel1, speed1, accel2, speed2)
 
 
 def SpeedAccelDistanceM1M2_2(address, accel1, speed1, distance1, accel2, speed2, distance2, buffer):
@@ -1005,13 +1005,12 @@ def ReadMinMaxLogicVoltages(address):
 
 
 def SetM1PositionPID(address, kp, ki, kd, kimax, deadzone, min, max):
-    return _write4444444(address, Cmd.SETM1POSPID, long(kd * 1024), long(kp * 1024), long(ki * 1024), kimax, deadzone,
+    return _write4444444(address, Cmd.SETM1POSPID, int(kd * 1024), int(kp * 1024), int(ki * 1024), kimax, deadzone,
                          min, max)
 
 
 def SetM2PositionPID(address, kp, ki, kd, kimax, deadzone, min, max):
-    return _write4444444(address, Cmd.SETM2POSPID, long(kd * 1024), long(kp * 1024), long(ki * 1024), kimax, deadzone,
-                         min, max)
+    return _write4444444(address, Cmd.SETM2POSPID, int(kd * 1024), int(kp * 1024), int(ki * 1024), kimax, deadzone, min, max)
 
 
 def ReadM1PositionPID(address):

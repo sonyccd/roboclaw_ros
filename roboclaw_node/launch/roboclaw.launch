@@ -1,21 +1,50 @@
 <?xml version="1.0"?>
 <launch>
 
-    <arg name="dev" default="/dev/ttyACM0"/>
-    <arg name="baud" default="115200"/>
-    <arg name="address" default="128"/>
+    <!--<arg name="dev" default="/dev/ttyACM4"/>-->
+    <arg name="baud" default="460800"/>
+    <!--<arg name="address" default="128"/>-->
     <arg name="max_speed" default="2.0"/>
-    <arg name="ticks_per_meter" default="4342.2"/>
-    <arg name="base_width" default="0.315"/>
+    <arg name="ticks_per_rotation" default="2000"/>      <!-- 66390.8 -->
+    <arg name="gear_ratio" default="32"/>
+    <arg name="wheel_circ" default="0.964"/>
+    <arg name="base_width" default="0.69"/>
     <arg name="run_diag" default="true"/>
+    <arg name="pub_odom_front" default="false"/>
+    <arg name="pub_odom_back" default="false"/>
+    <arg name="stop_movement" default="true"/>
+    <arg name="max_accel_front" default="1.5"/> <!--accel est en ms^2-->
+    <arg name="max_accel_back" default="1.5"/>
 
-    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node">
-        <param name="~dev" value="$(arg dev)"/>
+    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node_front" output="screen" respawn="true">
+        <param name="~dev" value="/dev/rcFront"/>
         <param name="~baud" value="$(arg baud)"/>
-        <param name="~address" value="$(arg address)"/>
+        <param name="~address" value="128"/>
         <param name="~max_speed" value="$(arg max_speed)"/>
-        <param name="~ticks_per_meter" value="$(arg ticks_per_meter)"/>
+        <param name="~ticks_per_rotation" value="$(arg ticks_per_rotation)"/>
+        <param name="~gear_ratio" value="$(arg gear_ratio)"/>
+        <param name="~wheel_circ" value="$(arg wheel_circ)"/>
         <param name="~base_width" value="$(arg base_width)"/>
+        <param name="~pub_odom" value="$(arg pub_odom_front)"/>
+        <param name="~stop_movement" value="$(arg stop_movement)"/>
+        <param name="~max_accel" value="$(arg max_accel_front)"/>
+        <param name="~name" value="roboclaw_front"/>
+    </node>
+    
+    <node if="$(arg run_diag)" pkg="roboclaw_node" type="roboclaw_node.py" name="roboclaw_node_back" output="screen" respawn="true">
+        <param name="~dev" value="/dev/rcBack"/>
+        <param name="~baud" value="$(arg baud)"/>
+        <param name="~address" value="129"/>
+        <param name="~max_speed" value="$(arg max_speed)"/>
+        <param name="~ticks_per_rotation" value="$(arg ticks_per_rotation)"/>
+        <param name="~gear_ratio" value="$(arg gear_ratio)"/>
+        <param name="~wheel_circ" value="$(arg wheel_circ)"/>
+        <param name="~base_width" value="$(arg base_width)"/>
+        <param name="~pub_odom" value="$(arg pub_odom_back)"/>
+        <param name="~stop_movement" value="$(arg stop_movement)"/>
+        <param name="~max_accel" value="$(arg max_accel_back)"/>
+        <param name="~name" value="roboclaw_back"/>
+
     </node>
 
     <node pkg="diagnostic_aggregator" type="aggregator_node"
@@ -23,5 +52,20 @@
         <rosparam command="load"
                   file="$(find roboclaw_node)/config/roboclaw_diag.yaml"/>
     </node>
+
+    <!-- <group ns="joy_teleop">
+
+    <rosparam command="load" file="/home/vaul/catkin_ws/src/weasel_asc_launchers/config/teleop.yaml" />
+    <param name="joy_node/dev" value="/dev/input/js0" />
+    <remap from="/joy_teleop/cmd_vel" to="/cmd_vel_joy" />
+
+    <node pkg="joy" type="joy_node" name="joy_node" />
+
+    <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_twist_joy"/>
+
+    <node pkg="twist_mux" type="twist_mux" name="twist_mux">
+        <rosparam command="load" file="$(find weasel_asc_launchers)/config/twist_mux.yaml" />
+    </node>
+  </group> -->
 
 </launch>
